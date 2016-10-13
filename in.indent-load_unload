@@ -1,0 +1,156 @@
+# Author: M.R. Sadat 
+# University of Arizona
+# Department of Civil Engineering & Engineering Mechanics
+
+#box tilt large
+
+variable seed equal 812210
+variable runs string r1
+variable comp string 2.0
+variable inter string 010
+
+variable dataf string data.test-NVT_1K
+variable name string GBP-${comp}-indent-${runs}
+log log.${name}
+
+units		metal
+atom_style	full
+
+boundary p p f 
+
+read_data ${dataf}
+
+mass 1 28.065 #Si
+mass 2 26.98  #Al
+mass 3 22.99 #Na
+mass 4 16.00  #Stuctural O
+mass 5 28.065  #quartz Si
+mass 6 16.00  #quartz O
+
+set type 1 charge 2.40
+set type 2 charge 1.80
+set type 3 charge 0.6 #
+set type 4 charge -1.20
+set type 5 charge 2.4 
+set type 6 charge -1.2
+
+# Element:Type
+# Si:1, Al:2, Na:3, Str-O: 4, Mol-O :5, Mol-H :6
+pair_style hybrid/overlay coul/long 12.0 buck 12.00  
+#pair_coeff * * sw SiAlO.sw Si Al NULL O NULL NULL NULL NULL NULL
+pair_coeff * * coul/long
+pair_coeff * * buck  0.0000000  0.100000 0.000000
+pair_coeff 1 4 buck  13702.905 0.193817 54.681
+pair_coeff 2 4 buck  12201.417 0.195628 31.997
+pair_coeff 3 4 buck  2755.0323 0.258583 33.831 
+pair_coeff 4 4 buck  1844.7548 0.343645 192.58
+
+pair_coeff 1 6 buck  13702.905 0.193817 54.681
+pair_coeff 5 6 buck  13702.905 0.193817 54.681
+pair_coeff 4 5 buck  13702.905 0.193817 54.681
+pair_coeff 2 6 buck  12201.417 0.195628 31.997
+pair_coeff 3 6 buck  2755.0323 0.258583 33.831 
+pair_coeff 4 6 buck  1844.7548 0.343645 192.58
+pair_coeff 6 6 buck  1844.7548 0.343645 192.58
+
+
+#pair_modify table 0
+kspace_style pppm  1.0E-4
+kspace_modify slab 3.0
+neighbor	1.0 bin
+neigh_modify	delay 4 every 2 check yes 
+
+timestep 0.001
+dump id all custom 1000 dump.${name} id type x y z fx fy fz 
+
+#velocity all create 1.0 ${seed} dist gaussian rot yes mom yes
+
+#fix r3 all nvt temp 1.0 1.0 1.0
+#run 100000
+#unfix r3
+
+#change_box all x scale 1.0 y scale 1.0 z scale 2.5
+
+#write_data data.test-NVT_1K
+#quit
+
+variable z equal "116.0 - 3*elaplong*dt"
+
+region base block INF INF INF INF INF 6.0 units box
+
+group fixedatoms region base	
+group mobile subtract all fixedatoms 
+
+# initial velocities
+
+compute new mobile temp
+velocity mobile create 0.2 482748 temp new
+fix 1 all nve
+fix 2 fixedatoms setforce 0.0 0.0 0.0
+fix 3 all temp/rescale 100 0.1 0.1 0.01 1.0
+
+thermo 1000
+#thermo_style	custom step f_3[3] pe ke temp
+thermo_style	custom step pe ke temp density
+thermo_modify	temp new
+
+#--------- nano indentation with dynamics--------- 
+# ------------loading------------------------
+
+fix 2a all indent 5.0 sphere 42.35 48.5 v_z 10.0 units box 
+fix 1a all ave/time 1 100 100 f_2a f_2a[3] file indent-load.dat
+#fix 2 all indent 5.0 sphere 42.35 48.5 116 5.0 units box 
+fix_modify 2a energy yes
+#fix 1a all nve
+#fix 4 all nvt temp 1.0 1.0 1.0
+run 10000
+unfix 2a
+unfix 1a
+unfix 1
+
+#-------------------- unloading stage ----------------------
+
+variable z1 equal "86 + 3*elaplong*dt"
+
+fix 1 all nve
+fix 2a all indent 5.0 sphere 42.35 48.5 v_z1 10.0 units box 
+fix 1a all ave/time 1 100 100 f_2a f_2a[3] file indent-unload.dat
+#fix 2 all indent 5.0 sphere 42.35 48.5 116 5.0 units box 
+fix_modify 2a energy yes
+#fix 1a all nve
+#fix 4 all nvt temp 1.0 1.0 1.0
+run 10000
+unfix 2a
+unfix 1a
+unfix 1
+
+
+
+#minimize 2.3e-16 1.0e-3 200000 200000
+#fix 2 all indent 5.0 sphere 42.35 48.5 117 5.0 units box 
+#fix_modify 2 energy yes
+#minimize 2.3e-16 1.0e-3 200000 200000
+
+#fix 2 all indent 5.0 sphere 42.35 48.5 116 5.0 units box 
+#fix_modify 2 energy yes
+#minimize 2.3e-16 1.0e-3 200000 200000
+
+#fix 2 all indent 5.0 sphere 42.35 48.5 115 5.0 units box 
+#fix_modify 2 energy yes
+#minimize 2.3e-16 1.0e-3 200000 200000
+
+#fix 2 all indent 5.0 sphere 42.35 48.5 114 5.0 units box 
+#fix_modify 2 energy yes
+#minimize 2.3e-16 1.0e-3 200000 200000
+
+#fix 2 all indent 5.0 sphere 42.35 48.5 113 5.0 units box 
+#fix_modify 2 energy yes
+#minimize 2.3e-16 1.0e-3 200000 200000
+
+#fix 2 all indent 5.0 sphere 42.35 48.5 112 5.0 units box 
+#fix_modify 2 energy yes
+#minimize 2.3e-16 1.0e-3 200000 200000
+
+
+
+
