@@ -9,6 +9,10 @@ variable runs string r1
 variable comp string 2.0
 variable inter string 010
 
+#need to have a data file which already have vacuum and equilibrated at 1 K temp.
+#to do next: see the effect of temperature
+#this simulation uses data file equilibrated at 1K and already has vacuum in z direction
+
 variable dataf string data.test-NVT_1K
 variable name string GBP-${comp}-indent-${runs}
 log log.${name}
