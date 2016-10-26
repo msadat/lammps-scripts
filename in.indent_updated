@@ -1,0 +1,145 @@
+#nano indentation using fixed rate and dynamics
+# Author: M.R. Sadat 
+# University of Arizona
+# Department of Civil Engineering & Engineering Mechanics
+
+#box tilt large
+
+variable seed equal 812210
+variable comp string 2.0
+
+variable radius equal 20
+variable rate string 3
+variable K equal 10
+
+
+
+variable dataf string data.test-NVT_1K-big
+variable name string GBP-${comp}-${radius}-${rate}-${K}
+log log.${name}
+
+units		metal
+atom_style	full
+
+boundary p p f 
+
+read_data ${dataf}
+
+#replicate 2 2 1
+
+#charge goes here
+#mass goes here
+#pair_coeff goes here
+
+
+#pair_modify table 0
+kspace_style pppm  1.0E-4
+kspace_modify slab 3.0
+neighbor	1.0 bin
+neigh_modify	delay 4 every 2 check yes 
+
+timestep 0.001
+#dump id all custom 1000 dump.${name} id type x y z fx fy fz 
+
+#velocity all create 1.0 ${seed} dist gaussian rot yes mom yes
+
+#thermo 1000
+#thermo_style	custom step f_3[3] pe ke temp
+#thermo_style	custom step pe ke temp density
+
+#fix r3 all nvt temp 1.0 1.0 1.0
+#run 100000
+#unfix r3
+
+#change_box all x scale 1.0 y scale 1.0 z scale 2.5
+
+#write_data data.test-NVT_1K-big
+
+variable z equal 132.0-${rate}*elaplong*dt #change the initial position manually based on radius of indenter
+
+region base block INF INF INF INF INF 6.0 units box
+
+group fixedatoms region base	
+group mobile subtract all fixedatoms 
+
+# initial velocities
+
+#velocity all create 10.0 ${seed} dist gaussian rot yes mom yes
+
+compute eng all pe/atom
+compute eatoms all reduce sum c_eng 
+
+dump id all custom 1000 dump.${name} id type x y z fx fy fz c_eng
+
+compute new mobile temp
+velocity mobile create 0.2 482748 temp new
+fix 1 mobile nve
+fix 2 fixedatoms setforce 0.0 0.0 0.0
+#testing the effect of temp/rescale
+fix 3 mobile temp/rescale 100 0.1 0.1 0.01 1.0
+
+thermo 1000
+#thermo_style	custom step f_3[3] pe ke temp
+thermo_style	custom step pe ke temp density c_eatoms
+#thermo_modify	temp new
+
+#--------- nano indentation with dynamics--------- 
+# ------------loading------------------------
+
+fix 2a mobile indent ${K} sphere 84.5 97.26 v_z ${radius} units box 
+fix 1a mobile ave/time 1 100 100 f_2a f_2a[3] file indent-load.dat
+#fix 2 all indent 5.0 sphere 42.35 48.5 116 5.0 units box 
+fix_modify 2a energy yes
+#fix 1a all nve
+#fix 4 all nvt temp 1.0 1.0 1.0
+run 10000
+unfix 2a
+unfix 1a
+unfix 1
+
+#-------------------- unloading stage ----------------------
+
+variable z1 equal 132.0-${rate}*10+${rate}*elaplong*dt #assuming run for 10 ps
+
+fix 1 mobile nve
+fix 2a mobile indent ${K} sphere 84.5 97.26 v_z1 ${radius} units box 
+fix 1a mobile ave/time 1 100 100 f_2a f_2a[3] file indent-unload.dat
+#fix 2 all indent 5.0 sphere 42.35 48.5 116 5.0 units box 
+fix_modify 2a energy yes
+#fix 1a all nve
+#fix 4 all nvt temp 1.0 1.0 1.0
+run 10000
+unfix 2a
+unfix 1a
+unfix 1
+
+
+
+#minimize 2.3e-16 1.0e-3 200000 200000
+#fix 2 all indent 5.0 sphere 42.35 48.5 117 5.0 units box 
+#fix_modify 2 energy yes
+#minimize 2.3e-16 1.0e-3 200000 200000
+
+#fix 2 all indent 5.0 sphere 42.35 48.5 116 5.0 units box 
+#fix_modify 2 energy yes
+#minimize 2.3e-16 1.0e-3 200000 200000
+
+#fix 2 all indent 5.0 sphere 42.35 48.5 115 5.0 units box 
+#fix_modify 2 energy yes
+#minimize 2.3e-16 1.0e-3 200000 200000
+
+#fix 2 all indent 5.0 sphere 42.35 48.5 114 5.0 units box 
+#fix_modify 2 energy yes
+#minimize 2.3e-16 1.0e-3 200000 200000
+
+#fix 2 all indent 5.0 sphere 42.35 48.5 113 5.0 units box 
+#fix_modify 2 energy yes
+#minimize 2.3e-16 1.0e-3 200000 200000
+
+#fix 2 all indent 5.0 sphere 42.35 48.5 112 5.0 units box 
+#fix_modify 2 energy yes
+#minimize 2.3e-16 1.0e-3 200000 200000
+
+
+
+
