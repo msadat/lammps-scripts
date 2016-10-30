@@ -1,4 +1,4 @@
-#nano indentation using fixed rate and dynamics
+
 # Author: M.R. Sadat 
 # University of Arizona
 # Department of Civil Engineering & Engineering Mechanics
@@ -9,13 +9,18 @@ variable seed equal 812210
 variable comp string 2.0
 
 variable radius equal 20
-variable rate string 3
+variable rate equal 1
 variable K equal 10
-
+variable zsurface equal 108 #z coordinate of indenter bottom
+variable depth equal 30 #depth of penetration
+variable zinit equal ${zsurface}+${radius} #initial z coord of indenter center
+variable tstep equal 1000 # 1 fs = 1000 ps
+variable runtime equal ${depth}*${rate} #total amount of time to run (ps)
+variable runsteps equal ${depth}*${tstep} #total timesteps to run
 
 
 variable dataf string data.test-NVT_1K-big
-variable name string GBP-${comp}-${radius}-${rate}-${K}
+variable name string GBP-${comp}-${radius}-${rate}-${K}-66K
 log log.${name}
 
 units		metal
@@ -29,7 +34,7 @@ read_data ${dataf}
 
 #charge goes here
 #mass goes here
-#pair_coeff goes here
+#pair style goes here
 
 
 #pair_modify table 0
@@ -55,7 +60,7 @@ timestep 0.001
 
 #write_data data.test-NVT_1K-big
 
-variable z equal 132.0-${rate}*elaplong*dt #change the initial position manually based on radius of indenter
+variable z equal ${zinit}-${rate}*elaplong*dt #change the initial position manually based on radius of indenter
 
 region base block INF INF INF INF INF 6.0 units box
 
@@ -69,7 +74,7 @@ group mobile subtract all fixedatoms
 compute eng all pe/atom
 compute eatoms all reduce sum c_eng 
 
-dump id all custom 1000 dump.${name} id type x y z fx fy fz c_eng
+dump id all custom 3000 dump.${name} id type x y z fx fy fz c_eng
 
 compute new mobile temp
 velocity mobile create 0.2 482748 temp new
@@ -83,63 +88,39 @@ thermo 1000
 thermo_style	custom step pe ke temp density c_eatoms
 #thermo_modify	temp new
 
+#setting variables 
+variable xdim equal "lx/2"
+variable ydim equal "ly/2"
+
+
 #--------- nano indentation with dynamics--------- 
 # ------------loading------------------------
 
-fix 2a mobile indent ${K} sphere 84.5 97.26 v_z ${radius} units box 
-fix 1a mobile ave/time 1 100 100 f_2a f_2a[3] file indent-load.dat
+fix 2a mobile indent ${K} sphere ${xdim} ${ydim} v_z ${radius} units box 
+fix 1a mobile ave/time 1 100 100 f_2a f_2a[3] file indent-load-${radius}-${rate}-${K}.dat
 #fix 2 all indent 5.0 sphere 42.35 48.5 116 5.0 units box 
 fix_modify 2a energy yes
 #fix 1a all nve
 #fix 4 all nvt temp 1.0 1.0 1.0
-run 10000
+run ${runsteps}
 unfix 2a
 unfix 1a
 unfix 1
 
 #-------------------- unloading stage ----------------------
 
-variable z1 equal 132.0-${rate}*10+${rate}*elaplong*dt #assuming run for 10 ps
+variable z1 equal ${zinit}-${rate}*${runtime}+${rate}*elaplong*dt #assuming run for 10 ps
 
 fix 1 mobile nve
-fix 2a mobile indent ${K} sphere 84.5 97.26 v_z1 ${radius} units box 
-fix 1a mobile ave/time 1 100 100 f_2a f_2a[3] file indent-unload.dat
+fix 2a mobile indent ${K} sphere ${xdim} ${ydim} v_z1 ${radius} units box 
+fix 1a mobile ave/time 1 100 100 f_2a f_2a[3] file indent-unload-${radius}-${rate}-${K}.dat
 #fix 2 all indent 5.0 sphere 42.35 48.5 116 5.0 units box 
 fix_modify 2a energy yes
 #fix 1a all nve
 #fix 4 all nvt temp 1.0 1.0 1.0
-run 10000
+run ${runsteps}
 unfix 2a
 unfix 1a
 unfix 1
-
-
-
-#minimize 2.3e-16 1.0e-3 200000 200000
-#fix 2 all indent 5.0 sphere 42.35 48.5 117 5.0 units box 
-#fix_modify 2 energy yes
-#minimize 2.3e-16 1.0e-3 200000 200000
-
-#fix 2 all indent 5.0 sphere 42.35 48.5 116 5.0 units box 
-#fix_modify 2 energy yes
-#minimize 2.3e-16 1.0e-3 200000 200000
-
-#fix 2 all indent 5.0 sphere 42.35 48.5 115 5.0 units box 
-#fix_modify 2 energy yes
-#minimize 2.3e-16 1.0e-3 200000 200000
-
-#fix 2 all indent 5.0 sphere 42.35 48.5 114 5.0 units box 
-#fix_modify 2 energy yes
-#minimize 2.3e-16 1.0e-3 200000 200000
-
-#fix 2 all indent 5.0 sphere 42.35 48.5 113 5.0 units box 
-#fix_modify 2 energy yes
-#minimize 2.3e-16 1.0e-3 200000 200000
-
-#fix 2 all indent 5.0 sphere 42.35 48.5 112 5.0 units box 
-#fix_modify 2 energy yes
-#minimize 2.3e-16 1.0e-3 200000 200000
-
-
 
 
