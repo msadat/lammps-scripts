@@ -1,0 +1,82 @@
+#this is a general script to treat the interface of two dissimilar phase of atoms for subsequent MD simulation
+#interface is created parallel to the z direction
+#Author M. R. Sadat
+#Dept. of CEEM
+#Univ. of Arizona
+#11.7.16
+
+#make the different regions
+variable itemp equal 3000 # max. temperature of interface to be heated
+variable xlo1 equal "(lx/2)-5"
+variable xhi1 equal "(lx/2)+5"
+variable xlo2 equal "lx-5"
+
+region interface1 block ${xlo1} ${xhi1} INF INF INF INF #middle interface
+region interface2 block ${xlo2} INF INF INF INF INF #right boundary
+region interface3 block INF 5.0 INF INF INF INF #left boundary
+
+region box1 block 5.0 ${xlo1} INF INF INF INF #left part of the rest
+region box2 block ${xhi1} ${xlo2} INF INF INF INF #right part of the rest
+region rest union 2 box1 box2
+
+region interface union 3 interface1 interface2 interface3
+
+group int region interface
+group rest region rest
+
+#fix r1 all momentum 10 linear 1 1 1
+#fix   e1 all nve/limit 0.005
+#run 50000
+#unfix e1
+#unfix r1
+#write_data data.${name}-nve
+#quit
+#--------- Stabalize structure------- 
+
+velocity all create 300.0 ${seed} dist gaussian rot yes mom yes
+#velocity all create 300.0 3369215 loop local rot yes mom yes
+
+#fix r1 all nvt temp 300.0 300.0 1.0
+#run 200000
+#unfix r1
+
+#fix r4 all npt temp 300.0 300.0 1.0 x 0.0 0.0 10.0 y 0.000 0.000 10.0 z 0.00 0.00 10.0 pchain 10 drag 2.0 #1 GPa
+#fix r4 all npt temp 100.0 100.0 1.0 iso 0.0 0.0 10.0 drag 2.0 #0.0 GPa
+#run 200000
+#unfix r4
+#write_data data.${name}-Eq
+
+fix r3 rest nvt temp 300.0 300.0 1.0
+fix r4 int nvt temp 300.0 ${itemp} 1.0 
+run 200000
+unfix r3
+unfix r4
+
+fix r3 rest nvt temp 300.0 300.0 1.0
+fix r4 int nvt temp ${itemp} ${itemp} 1.0 
+run 100000
+unfix r3
+unfix r4
+
+fix r3 rest nvt temp 300.0 300.0 1.0
+fix r4 int nvt temp ${itemp} 300.0 1.0 
+run 500000
+unfix r3
+unfix r4
+
+fix r1 rest nvt temp 300.0 300.0 1.0
+fix r2 int nvt temp 300.0 300.0 1.0
+run 200000
+unfix r1
+unfix r2
+
+fix r4 all npt temp 300.0 300.0 1.0 x 0.0 0.0 10.0 y 0.000 0.000 10.0 z 0.00 0.00 10.0 pchain 10 drag 2.0 #1 GPa
+run 200000
+unfix r4
+write_data data.${name}-Eq-300K
+
+velocity all create 1.0 ${seed} dist gaussian rot yes mom yes
+
+fix r1 all nvt temp 1.0 1.0 1.0
+run 200000
+unfix r1
